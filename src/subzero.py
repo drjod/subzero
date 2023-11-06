@@ -28,6 +28,8 @@ class SubZero:
                            (self.__time.N_t+1, N))
         self.__Q_int = np.resize(np.zeros(N * N * self.__time.N_t+1), (self.__time.N_t+1, N, N))
         self.__Q_ext = np.zeros(self.__time.N_t+1)
+        # Wasserfraktion
+        self.__theta = -np.ones(self.__time.N_t+1)
         # Wärmetauscher
         self.__T_in = np.zeros(self.__time.N_t+1)  # Berechnet für [1:] (T_in[0] bleibt 0)
         self.__T_out = np.zeros(self.__time.N_t+1)  # Berechnet für [1:] (T_out[0] bleibt 0)
@@ -76,6 +78,9 @@ class SubZero:
     def storageGeometry(self):
         return self.__storageGeometry
     @property
+    def theta(self):
+        return self.__theta
+    @property
     def heatExchanger(self):
         return self.__heatExchanger
 
@@ -90,6 +95,8 @@ class SubZero:
             # Kopiere Temperatur und Wärmeinhalt von letztem Zeitschritt, für alle aktiven Boxen
             self.__T[n_T, :self.__storageGeometry.N_active] = self.__T[n_T-1, :self.__storageGeometry.N_active]
             self.__H[n_T, :self.__storageGeometry.N_active] = self.__H[n_T-1, :self.__storageGeometry.N_active]
+
+            self.__theta[n_T] = self._theta(self.__T[n_T-1, 0])  # Wasserfraktion in Speicher, Box 0
 
             self.__latent_heat_capacity[n_T] = self._latent_heat_capacity(self.__T[n_T-1,  # explicit
                                                                                      0  # storage, box 0
@@ -106,7 +113,7 @@ class SubZero:
                 self.__heatExchanger.configure(storage_control[1:])
 
                 self.__heatExchanger.calculate(
-                    self.__T[n_T,
+                    self.__T[n_T-1,
                              0  # Speicher, Box 0
                              ])
                 if self.__output:
@@ -131,7 +138,6 @@ class SubZero:
             self.__H[n_T, 0] += H_ext
             self.H_total[n_T] = self.H_total[n_T-1] + H_ext
 
-
             for n_0 in range(self.__storageGeometry.N_active):
                 for n_1 in range(self.__storageGeometry.N):
                     #### Berechne interne Quell- und Senkenterme
@@ -150,17 +156,20 @@ class SubZero:
                                              (self.heat_capacity(self.T[n_T-1, 0]) -
                                               self.__latent_heat_capacity[n_T]) /
                                              self.__storageGeometry.V[0])
+
+                        # print("heat capacity: ", self.heat_capacity(self.T[n_T-1, 0]))
                     else:
                         self.T[n_T, n_0] += (H_int /
                                              self.heat_capacity(self.__T[n_T-1, n_0]) /
                                              self.__storageGeometry.V[n_0])
 
-    def theta(self, T):
+    def _theta(self, T):
         return np.exp(-((T - self.__storageTemperatureConditions.melting) /
-                        self.__storageParameter.icing_coefficient)**2)
+                        self.__storageParameter.icing_coefficient)**2
+                      ) if (T < self.__storageTemperatureConditions.melting) else 1.
 
     def deriv_theta(self, T):
-        return (-self.theta(T) * 2 * (T - self.__storageTemperatureConditions.melting) /
+        return (-self._theta(T) * 2 * (T - self.__storageTemperatureConditions.melting) /
                 self.__storageParameter.icing_coefficient**2)
 
     def _latent_heat_capacity(self, T):  # Volumetrische Wärmekapazität für Phasenwechsel [W/m³/K]
@@ -171,7 +180,7 @@ class SubZero:
                     self.__storageParameter.porosity * self.__storageParameter.ice.density)
 
     def heat_capacity(self, T):  # Volumetrische Wärmekapazität [W/m³/K]
-        theta = self.theta(T)
+        theta = self._theta(T)
         term_fluid = (self.__storageParameter.fluid.capacity *
                       self.__storageParameter.fluid.density * self.__storageParameter.porosity * theta)
         term_ice = (self.__storageParameter.ice.capacity *
@@ -182,7 +191,7 @@ class SubZero:
         return term_fluid + term_ice + term_solid
 
     def heat_conductivity(self, T):  # Wärmeleitfähigkeit [W/m/K]
-        theta = self.theta(T)
+        theta = self._theta(T)
         term_fluid = self.__storageParameter.fluid.conductivity * self.__storageParameter.porosity * theta
         term_ice = self.__storageParameter.ice.conductivity * self.__storageParameter.porosity * (1. - theta)
         term_solid = self.__storageParameter.solid.conductivity * (1. - self.__storageParameter.porosity)
