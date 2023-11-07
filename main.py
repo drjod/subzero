@@ -5,7 +5,7 @@ if "src" not in sys.path:
 
 from subzero import SubZero
 
-subzero = SubZero("examples/gews_LK")
+subzero = SubZero("examples/gews_2")
 subzero.calculate()
 
 
@@ -13,6 +13,27 @@ subzero.calculate()
 # PLOTTING
 
 if True:
+
+    plots = ["temperatur_speicher", "temperatur_aussen", "waernme",
+             "eisfraktion", "raten", "fluidgeschwindigkeit", "flag"]
+    plots_shown = {
+        "temperatur_speicher": 1,
+        "temperatur_aussen": 0,
+        "waernme": 0,
+        "eisfraktion": 0,
+        "raten": 1,
+        "fluidgeschwindigkeit": 1,
+        "flag": 1
+    }
+
+    anzahl_plots = 0
+    for key in plots:
+        if plots_shown[key] == 1:
+            anzahl_plots += 1
+
+    anzahl_plots
+
+
     import numpy as np
     import matplotlib.pyplot as plt
     import datetime as dt
@@ -43,135 +64,149 @@ if True:
 
     ################################
 
-    fig, axes = plt.subplots(7, 1, figsize=(25, 20))
+    fig, axes = plt.subplots(anzahl_plots, 1, figsize=(25, 20))
     plt.subplots_adjust(wspace=.3, hspace=.5)
+    ndx = 0
+    if plots_shown["temperatur_speicher"]:
+        ax = axes[ndx]
+        ax.set_title("Temperaturen im Speicher (Box 0)")
+        ax.plot(x, subzero.T[:, 0], label='Box 0', color='red')  # , marker='x')
+        ax.plot(x[1:], subzero.T_in[1:], label='T_in', color='orange')
+        ax.plot(x[1:], subzero.T_out[1:], label='T_out', color='brown')
 
-    ax = axes[0]
-    ax.set_title("Temperaturen im Speicher (Box 0)")
-    ax.plot(x, subzero.T[:, 0], label='Box 0', color='red')  # , marker='x')
-    ax.plot(x[1:], subzero.T_in[1:], label='T_in', color='orange')
-    ax.plot(x[1:], subzero.T_out[1:], label='T_out', color='brown')
+        ax.set_ylabel("T [°C]")
 
-    ax.set_ylabel("T [°C]")
-
-    ax.xaxis.set_major_formatter(date_format)
-    ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-    ax.tick_params(axis='x', labelrotation=labelrotation)
-    ax.minorticks_on()
-    ax.xaxis.set_minor_locator(AutoMinorLocator(7))
-    ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
-    ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
-    # ax.set_xticklabels([])
-    ax.legend()  # loc='lower right')
-
+        ax.xaxis.set_major_formatter(date_format)
+        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+        ax.tick_params(axis='x', labelrotation=labelrotation)
+        ax.minorticks_on()
+        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
+        ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
+        ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+        # ax.set_xticklabels([])
+        ax.legend()  # loc='lower right')
+        ndx += 1
     #####################
 
-    ax = axes[1]
-    ax.set_title("Temperaturen außerhalb des Speichers (Boxen 1-12)")
-    ax.plot(x, subzero.T[:, 1], label='Box 1 - unterhalb', color='blue')
-    ax.plot(x, subzero.T[:, 2], label='Box 2 - seitlich', color='green')
-    ax.plot(x, subzero.T[:, 7], label='Box 7 - weit unten', color='blue', linestyle='--')
-    ax.plot(x, subzero.T[:, 8], label='Box 8 - weit seitlich', color='green', linestyle='--')
+    if plots_shown["temperatur_aussen"]:
+        ax = axes[ndx]
+        ax.set_title("Temperaturen außerhalb des Speichers (Boxen 1-12)")
+        ax.plot(x, subzero.T[:, 1], label='Box 1 - unterhalb', color='blue')
+        ax.plot(x, subzero.T[:, 2], label='Box 2 - seitlich', color='green')
+        ax.plot(x, subzero.T[:, 7], label='Box 7 - weit unten', color='blue', linestyle='--')
+        ax.plot(x, subzero.T[:, 8], label='Box 8 - weit seitlich', color='green', linestyle='--')
 
-    ax.set_ylabel("T [°C]")
-    ax.xaxis.set_major_formatter(date_format)
-    ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-    ax.tick_params(axis='x', labelrotation=labelrotation)
-    ax.minorticks_on()
-    ax.xaxis.set_minor_locator(AutoMinorLocator(7))
-    ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
-    ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+        ax.set_ylabel("T [°C]")
+        ax.xaxis.set_major_formatter(date_format)
+        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+        ax.tick_params(axis='x', labelrotation=labelrotation)
+        ax.minorticks_on()
+        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
+        ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
+        ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
 
-    ax.legend()  # loc='lower right')
-
+        ax.legend()  # loc='lower right')
+        ndx += 1
     #########################
-    storage_factor = 1e6 * 3600
-    ax = axes[2]
-    ax.set_title("Wärme in Boxen")
-    ax.plot(x, subzero.H[:, 0] / storage_factor, label='Box 0', color='red')
-    ax.plot(x, subzero.H[:, 1] / storage_factor, label='Box 1', color='blue')
-    ax.plot(x, subzero.H[:, 2] / storage_factor, label='Box 2', color='green')
-    ax.plot(x, subzero.H[:, 7] / storage_factor, label='Box 7', color='blue', linestyle='--')
-    ax.plot(x, subzero.H[:, 8] / storage_factor, label='Box 8', color='green', linestyle='--')
 
-    ax.set_ylabel("[MWh]")
-    ax.xaxis.set_major_formatter(date_format)
-    ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-    ax.tick_params(axis='x', labelrotation=labelrotation)
-    ax.minorticks_on()
-    ax.xaxis.set_minor_locator(AutoMinorLocator(7))
-    ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
-    ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+    if plots_shown["waernme"]:
+        storage_factor = 1e6 * 3600
+        ax = axes[ndx]
+        ax.set_title("Wärme in Boxen")
+        ax.plot(x, subzero.H[:, 0] / storage_factor, label='Box 0', color='red')
+        ax.plot(x, subzero.H[:, 1] / storage_factor, label='Box 1', color='blue')
+        ax.plot(x, subzero.H[:, 2] / storage_factor, label='Box 2', color='green')
+        ax.plot(x, subzero.H[:, 7] / storage_factor, label='Box 7', color='blue', linestyle='--')
+        ax.plot(x, subzero.H[:, 8] / storage_factor, label='Box 8', color='green', linestyle='--')
 
-    ax.legend()  # loc='lower right')
+        ax.set_ylabel("[MWh]")
+        ax.xaxis.set_major_formatter(date_format)
+        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+        ax.tick_params(axis='x', labelrotation=labelrotation)
+        ax.minorticks_on()
+        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
+        ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
+        ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
 
+        ax.legend()  # loc='lower right')
+        ndx += 1
     #########################
-    ax = axes[3]
-    ax.set_title("Eisfraktion")
-    ax.plot(x[1:], 1 - subzero.theta[1:], color='red')
 
-    ax.set_ylabel("[-]")
-    ax.set_ylim([-0.1, 1.1])
-    ax.xaxis.set_major_formatter(date_format)
-    ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-    ax.tick_params(axis='x', labelrotation=labelrotation)
-    ax.minorticks_on()
-    ax.xaxis.set_minor_locator(AutoMinorLocator(7))
-    ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
-    ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+    if plots_shown["eisfraktion"]:
+        ax = axes[ndx]
+        ax.set_title("Eisfraktion")
+        ax.plot(x[1:], 1 - subzero.theta[1:], color='red')
 
-    #########################
-    storage_factor = 1e3
-    V_box0 = 4 * 4 * 6  # m3
-    ax = axes[4]
-    ax.set_title("Speicherraten")
-    ax.plot(x, subzero.Q_ext / storage_factor,
-            label='Be- und Entlandung', color='orange')
-    ax.plot(x,
-            -subzero.latent_heat_capacity * V_box0 *
-            (subzero.T[:, 0] - np.roll(subzero.T[:, 0], 1)) / 3600 / storage_factor,
-            label='Latente Wärme', color='blue', linestyle='--')
-
-    ax.set_ylabel("[KW]")
-    ax.xaxis.set_major_formatter(date_format)
-    ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-    ax.tick_params(axis='x', labelrotation=labelrotation)
-    ax.minorticks_on()
-    ax.xaxis.set_minor_locator(AutoMinorLocator(7))
-    ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
-    ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
-    ax.legend()  # loc='lower right')
+        ax.set_ylabel("[-]")
+        ax.set_ylim([-0.1, 1.1])
+        ax.xaxis.set_major_formatter(date_format)
+        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+        ax.tick_params(axis='x', labelrotation=labelrotation)
+        ax.minorticks_on()
+        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
+        ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
+        ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+        ndx += 1
 
     #########################
 
-    ax = axes[5]
-    ax.set_title("Fluidgeschwindigkeit in Wärmetauscher")
-    ax.plot(x[1:], subzero.v[1:], label='v', color='orange')
+    if plots_shown["raten"]:
+        storage_factor = 1e3
+        V_box0 = 4 * 4 * 6  # m3
+        ax = axes[ndx]
+        ax.set_title("Speicherraten")
+        ax.plot(x, subzero.Q_ext / storage_factor,
+                label='Be- und Entlandung', color='orange')
+        ax.plot(x,
+                -subzero.latent_heat_capacity * V_box0 *
+                (subzero.T[:, 0] - np.roll(subzero.T[:, 0], 1)) / 3600 / storage_factor,
+                label='Latente Wärme', color='blue', linestyle='--')
 
-    ax.set_ylabel("[m/s]")
-    ax.xaxis.set_major_formatter(date_format)
-    ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-    ax.tick_params(axis='x', labelrotation=labelrotation)
-    ax.minorticks_on()
-    ax.xaxis.set_minor_locator(AutoMinorLocator(7))
-    ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
-    ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
-    # ax.legend()#loc='lower right')
+        ax.set_ylabel("[KW]")
+        ax.xaxis.set_major_formatter(date_format)
+        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+        ax.tick_params(axis='x', labelrotation=labelrotation)
+        ax.minorticks_on()
+        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
+        ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
+        ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+        ax.legend()  # loc='lower right')
+        ndx += 1
 
     #########################
 
-    ax = axes[6]
-    ax.set_title("Flag für Wärmetauscher (0: inaktiv, 1: aktiv, negativ: Error)")
-    ax.plot(x[1:], subzero.heat_exchanger_flag[1:], label='flag', color='orange')
+    if plots_shown["fluidgeschwindigkeit"]:
+        ax = axes[ndx]
+        ax.set_title("Fluidgeschwindigkeit in Wärmetauscher")
+        ax.plot(x[1:], subzero.v[1:], label='v', color='orange')
 
-    ax.set_ylabel("[-]")
-    ax.xaxis.set_major_formatter(date_format)
-    ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-    ax.tick_params(axis='x', labelrotation=labelrotation)
-    ax.minorticks_on()
-    ax.xaxis.set_minor_locator(AutoMinorLocator(7))
-    ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
-    ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
-    # ax.legend()#loc='lower right')
+        ax.set_ylabel("[m/s]")
+        ax.xaxis.set_major_formatter(date_format)
+        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+        ax.tick_params(axis='x', labelrotation=labelrotation)
+        ax.minorticks_on()
+        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
+        ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
+        ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+        # ax.legend()#loc='lower right')
+        ndx += 1
+
+    #########################
+
+    if plots_shown["flag"]:
+        ax = axes[ndx]
+        ax.set_title("Flag für Wärmetauscher (0: inaktiv, 1: aktiv, negativ: Error)")
+        ax.plot(x[1:], subzero.heat_exchanger_flag[1:], label='flag', color='orange')
+
+        ax.set_ylabel("[-]")
+        ax.xaxis.set_major_formatter(date_format)
+        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+        ax.tick_params(axis='x', labelrotation=labelrotation)
+        ax.minorticks_on()
+        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
+        ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
+        ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+        # ax.legend()#loc='lower right')
+        ndx += 1
 
     plt.show()
