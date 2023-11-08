@@ -1,11 +1,14 @@
-import sys
+import pandas as pd
+import sys, importlib
 
 if "src" not in sys.path:
     sys.path.append("src")
 
 from subzero import SubZero
 
-subzero = SubZero("examples/gews_2")
+path = "examples/gews_LK_excel"
+
+subzero = SubZero(path)
 subzero.calculate()
 
 
@@ -18,21 +21,18 @@ if True:
              "eisfraktion", "raten", "fluidgeschwindigkeit", "flag"]
     plots_shown = {
         "temperatur_speicher": 1,
-        "temperatur_aussen": 0,
+        "temperatur_aussen": 1,
         "waernme": 0,
         "eisfraktion": 0,
-        "raten": 1,
-        "fluidgeschwindigkeit": 1,
-        "flag": 1
+        "raten": 0,
+        "fluidgeschwindigkeit": 0,
+        "flag": 0
     }
 
     anzahl_plots = 0
     for key in plots:
         if plots_shown[key] == 1:
             anzahl_plots += 1
-
-    anzahl_plots
-
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -41,17 +41,17 @@ if True:
     from matplotlib.dates import WeekdayLocator
     # import constants for the days of the week
     from matplotlib.dates import MO, TU, WE, TH, FR, SA, SU
-    from matplotlib.dates import HourLocator, DayLocator, YearLocator
+    # from matplotlib.dates import HourLocator, DayLocator, YearLocator
     from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
 
-    time_array = np.arange(subzero.time.N_t + 1) * subzero.time.delta_t  # Sekunden
+    time_array = subzero.time_array_shifted_to_loadcurve
 
     #############################
 
-    date_start = dt.datetime(2023,  # year
-                             8,  # month
+    date_start = dt.datetime(1900,  # year
+                             1,  # month
                              1,  # day
-                             12,  # hour
+                             0,  # hour
                              0,  # min
                              0  # sec
                              )
@@ -74,6 +74,16 @@ if True:
         ax.plot(x[1:], subzero.T_in[1:], label='T_in', color='orange')
         ax.plot(x[1:], subzero.T_out[1:], label='T_out', color='brown')
 
+        try:
+            if path not in sys.path:
+                sys.path.append(path)
+            storage_control = importlib.import_module("storage_control")
+
+            frame = pd.read_excel(path + "/" + storage_control.input_file)
+            ax.plot(x[1::12], frame.T_Storage, label='T_Storage', color='black', linestyle='--')
+
+        except:
+            pass
         ax.set_ylabel("T [°C]")
 
         ax.xaxis.set_major_formatter(date_format)
@@ -104,6 +114,17 @@ if True:
         ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
         ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
+
+        try:
+            if path not in sys.path:
+                sys.path.append(path)
+            storage_control = importlib.import_module("storage_control")
+
+            frame = pd.read_excel(path + "/" + storage_control.input_file)
+
+            ax.plot(x[1::12], frame.T_UD, label='T_UD', color='black', linestyle='--')
+        except:
+            pass
 
         ax.legend()  # loc='lower right')
         ndx += 1
@@ -162,6 +183,7 @@ if True:
                 (subzero.T[:, 0] - np.roll(subzero.T[:, 0], 1)) / 3600 / storage_factor,
                 label='Latente Wärme', color='blue', linestyle='--')
 
+        #ax.set_ylim([-.1, .1])
         ax.set_ylabel("[KW]")
         ax.xaxis.set_major_formatter(date_format)
         ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
@@ -179,6 +201,7 @@ if True:
         ax = axes[ndx]
         ax.set_title("Fluidgeschwindigkeit in Wärmetauscher")
         ax.plot(x[1:], subzero.v[1:], label='v', color='orange')
+        #ax.set_ylim([-2, 0])
 
         ax.set_ylabel("[m/s]")
         ax.xaxis.set_major_formatter(date_format)

@@ -19,28 +19,49 @@ def read_data(path):
     storage_control = importlib.import_module("storage_control")
 
     try:
-        # lese header variablen
-        file1 = open(path + "/" + storage_control.input_file, 'r')
-        Lines = file1.readlines()
-        headervariables = Lines[0].split()
 
-        frame = pd.read_table(path + "/" + storage_control.input_file, delimiter='\s+')
+        if storage_control.input_file.endswith("xlsx"):
+            #import xlrd
+            frame = pd.read_excel(path + "/" + storage_control.input_file)
+            #print(frame)
 
-        time_series = np.resize(np.zeros(frame[headervariables[0]].size * 4),
-                                [frame[headervariables[0]].size, 4])
+            time_unitfactor = {"s": 1, "h": 3600, "d": 86400, "y": 86400 * 3600}
+            heat_exchange_unitfactor = {"W": 1, "kW": 1e3, "MW": 1e6}
 
-        time_unitfactor = {"s": 1, "h": 3600, "d": 86400, "y": 86400 * 3600}
-        heat_exchange_unitfactor = {"W": 1, "kW": 1e3, "MW": 1e6}
+            time_series = np.resize(np.zeros(len(frame.index) * 4),
+                                    [len(frame.index), 4])
 
-        for ndx in range(int(time_series.size / 4)):
-            time_series[ndx][0] = ((frame[headervariables[0]][ndx] - frame[headervariables[0]][0]) *
-                                   time_unitfactor[storage_control.time_unit]) + storage_control.time_shift
-            time_series[ndx][1] = storage_control.storage_control
-            time_series[ndx][2] = (frame[headervariables[1]][ndx] * storage_control.heat_exchange_factor *
-                                   heat_exchange_unitfactor[storage_control.heat_exchange_unit])
-            time_series[ndx][3] = storage_control.temperature_condition
+            for ndx in range(len(frame.index)):
+                time_series[ndx][0] = frame["Time"][ndx] * time_unitfactor[storage_control.time_unit]
+                time_series[ndx][1] = storage_control.storage_control
+                time_series[ndx][2] = (frame["P_EWS"][ndx] * storage_control.heat_exchange_factor *
+                                       heat_exchange_unitfactor[storage_control.heat_exchange_unit])
+                time_series[ndx][3] = abs(frame["T_EWS_VL_average"][ndx] - frame["T_EWS_RL_average"][ndx])
 
-        print("read file ", storage_control.input_file, " - ", frame["Zeit"].size, " lines")
+            print("read excel-file ", storage_control.input_file, " - ", len(frame.index), " lines")
+        else:
+            # lese header variablen
+            file1 = open(path + "/" + storage_control.input_file, 'r')
+            Lines = file1.readlines()
+            headervariables = Lines[0].split()
+
+            frame = pd.read_table(path + "/" + storage_control.input_file, delimiter='\s+')
+
+            time_series = np.resize(np.zeros(frame[headervariables[0]].size * 4),
+                                    [frame[headervariables[0]].size, 4])
+
+            time_unitfactor = {"s": 1, "h": 3600, "d": 86400, "y": 86400 * 3600}
+            heat_exchange_unitfactor = {"W": 1, "kW": 1e3, "MW": 1e6}
+
+            for ndx in range(int(time_series.size / 4)):
+                time_series[ndx][0] = ((frame[headervariables[0]][ndx] - frame[headervariables[0]][0]) *
+                                       time_unitfactor[storage_control.time_unit]) + storage_control.time_shift
+                time_series[ndx][1] = storage_control.storage_control
+                time_series[ndx][2] = (frame[headervariables[1]][ndx] * storage_control.heat_exchange_factor *
+                                       heat_exchange_unitfactor[storage_control.heat_exchange_unit])
+                time_series[ndx][3] = storage_control.temperature_condition
+
+            print("read file ", storage_control.input_file, " - ", frame["Zeit"].size, " lines")
     except:
         time_series = storage_control.time_series
         print("read time series - ", int(time_series.size/4), " entries")
@@ -84,7 +105,7 @@ def read_data(path):
     )
 
     heatExchanger = HeatExchanger(heatExchangerParameter)
-    time = Time(parameter.time_delta_t, parameter.time_numberOfSteps)
+    time = Time(parameter.time_delta_t, parameter.time_numberOfSteps, storage_control.time_shift)
 
     return (storageGeometry, storageTemperatureConditions, storageParameter,
             heatExchanger, time, time_series)

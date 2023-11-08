@@ -41,6 +41,9 @@ class SubZero:
         self.__H = np.resize(np.zeros(N * self.__time.N_t+1), (self.__time.N_t+1, N))
         # Wärmeinhalt in Untergrund [Ws]
         self.H_total = np.zeros(self.__time.N_t+1)
+
+        self.__time_array = np.array(range(0, self.__time.N_t+1)) * self.__time.delta_t
+        self.__time_shift_input = 0
     @property
     def T(self):
         return self.__T
@@ -83,13 +86,18 @@ class SubZero:
     @property
     def heatExchanger(self):
         return self.__heatExchanger
+    @property
+    def time_array_shifted_to_loadcurve(self):
+        return self.__time_array + self.__time_shift_input
 
     def calculate(self):
+        self.__time_shift_input = self.__storage_control_time_series[0][0] - self.__time.time_shift
         #print(self.storageGeometry.N_active)
         for n_T in range(1, self.__time.N_t+1):
+
             if self.__output:
                 print("Timestep {} - {} s - {:.2} d".format(
-                    n_T, n_T * self.__time.delta_t, n_T * self.__time.delta_t/86400))
+                    n_T, self.__time_array[n_T], self.__time_array[n_T]/86400))
             #### Berechne Temperatur für aktive Boxen
 
             # Kopiere Temperatur und Wärmeinhalt von letztem Zeitschritt, für alle aktiven Boxen
@@ -102,13 +110,13 @@ class SubZero:
                                                                                      0  # storage, box 0
                                                                                      ])
             # Addiere externen Quell- und Senkenterm, für Speicher (Box 0)
-            storage_control = self.__storage_control_time_series[self.__storage_control_time_series[:, 0] >=
-                                                                 n_T * self.__time.delta_t][0]
+            storage_control = (self.__storage_control_time_series[self.__storage_control_time_series[:, 0] >=
+                                                                  self.__time_array[n_T]+self.__time_shift_input][0])
 
             self.__Q_ext[n_T] = storage_control[2]
             if self.__Q_ext[n_T] != 0:
                 if self.__output:
-                    print("\tQ: {:.2} W".format(storage_control[2]))
+                    print("\tQ: {:.2} W - DT: {:.2} K".format(storage_control[2], storage_control[3]))  # if mode 1
                 # Leistung angefragt
                 self.__heatExchanger.configure(storage_control[1:])
 
@@ -117,7 +125,7 @@ class SubZero:
                              0  # Speicher, Box 0
                              ])
                 if self.__output:
-                    print("\tv: {:.3} m/s".format(self.__heatExchanger.v()))
+                    print("\t-> v: {:.3} m/s".format(self.__heatExchanger.v()))
 
                 self.__T_in[n_T], self.__T_out[n_T] = (self.__heatExchanger.values.T_in,
                                                        self.__heatExchanger.values.T_out)
