@@ -34,16 +34,18 @@ class SubZero:
         self.__T_in = np.zeros(self.__time.N_t+1)  # Berechnet für [1:] (T_in[0] bleibt 0)
         self.__T_out = np.zeros(self.__time.N_t+1)  # Berechnet für [1:] (T_out[0] bleibt 0)
         self.__v = np.zeros(self.__time.N_t + 1)  # Berechnet für [1:] (v[0] bleibt 0)
-        self.__heat_exchanger_flag = np.ones(self.__time.N_t + 1)
+        self.__Q = np.zeros(self.__time.N_t + 1)  # Tatsächlicher Wärmeaustausch
+        self.__Q_flow = np.zeros(self.__time.N_t + 1)  # Berechnet für [1:] (v[0] bleibt 0)
+        self.__heat_exchanger_flag = -np.ones(self.__time.N_t + 1)
         # Volumetrische Wärmekapazität für Phasenwechsel [W/m³/K]
         self.__latent_heat_capacity = np.zeros(self.__time.N_t+1)
         # Wärmeinhalt in Boxen [Ws], (N*N_t+1)-Matrix
         self.__H = np.resize(np.zeros(N * self.__time.N_t+1), (self.__time.N_t+1, N))
         # Wärmeinhalt in Untergrund [Ws]
         self.H_total = np.zeros(self.__time.N_t+1)
-
-        self.__time_array = np.array(range(0, self.__time.N_t+1)) * self.__time.delta_t
         self.__time_shift_input = 0
+
+        self.__time_array = np.array(range(0, self.__time.N_t + 1)) * self.__time.delta_t
     @property
     def T(self):
         return self.__T
@@ -68,6 +70,12 @@ class SubZero:
     @property
     def v(self):
         return self.__v
+    @property
+    def Q(self):
+        return self.__Q
+    @property
+    def Q_flow(self):
+        return self.__Q_flow
     @property
     def heat_exchanger_flag(self):
         return self.__heat_exchanger_flag
@@ -116,23 +124,39 @@ class SubZero:
             self.__Q_ext[n_T] = storage_control[2]
             if self.__Q_ext[n_T] != 0:
                 if self.__output:
-                    print("\tQ: {:.2} W - DT: {:.2} K".format(storage_control[2], storage_control[3]))  # if mode 1
+                    if storage_control[1] == 1:
+                        temperature_unit, temperature_given = 'K', 'DT'
+                    elif storage_control[1] == 2:
+                        temperature_unit, temperature_given = '°C', 'T_in'
+                    elif storage_control[1] == 3:
+                        temperature_unit, temperature_given = '°C', 'T_out'
+                    else:
+                        print("ERROR - storage model {} not supported", format(storage_control[1]))
+
+                    print("\tQ: {:.2} W - {}: {:.2} {}".format(storage_control[2], temperature_given,
+                                                               storage_control[3], temperature_unit))
                 # Leistung angefragt
                 self.__heatExchanger.configure(storage_control[1:])
 
                 self.__heatExchanger.calculate(
                     self.__T[n_T-1,
                              0  # Speicher, Box 0
-                             ])
+                             ],
+                    self.__output)
                 if self.__output:
+                    print("capacity: ", self.heat_capacity(self.__T[n_T, 0]), "  for T_S: ", self.__T[n_T, 0])
                     print("\t-> v: {:.3} m/s".format(self.__heatExchanger.v()))
 
                 self.__T_in[n_T], self.__T_out[n_T] = (self.__heatExchanger.values.T_in,
                                                        self.__heatExchanger.values.T_out)
                 self.__v[n_T] = self.__heatExchanger.v()
+                self.__Q_flow[n_T] = self.__heatExchanger.Q_flow()
+                self.__Q[n_T] = self.__heatExchanger.values.Q
                 self.__heat_exchanger_flag[n_T] = self.__heatExchanger.values.flag
+
                 # H_ext = storage_control[2] * self.__time.delta_t # self.__sourceterm(n_T) * self.__time.delta_t
-                H_ext = self.__heatExchanger.control.heat_exchange() * self.__time.delta_t
+                ############### #H_ext = self.__heatExchanger.control.heat_exchange() * self.__time.delta_t
+                H_ext = self.__heatExchanger.values.Q * self.__time.delta_t
             else:
                 if self.__output:
                     print("\tQ: 0 W")

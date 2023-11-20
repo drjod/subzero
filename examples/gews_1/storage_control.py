@@ -1,5 +1,6 @@
 import numpy as np
 
+time_shift = 0
 
 time_series = np.array([
     [0.5 * 86400*365, 1, -3600, 3],  # Zeit, modus, Rate [W], Temperatur [°C]

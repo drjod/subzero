@@ -59,12 +59,20 @@ class HeatExchangerParameter:
                  CV,  # Volumetr. Wärmekapazität des Sondenfluides, J/m³/K
                  pipe_d,  # Rohrdurchmesser für Sondenfluid, m
                  number_of_pipes,  # Rohre pro BHE, 2=2U
-                 number_of_BHEs  # BHEs in Speicher
+                 number_of_BHEs,  # BHEs in Speicher
+                 min_flow,  # minimale Fliessrate
+                 max_flow,  # maximale Fliessrate
+                 min_exchange,  # minimale Wärmeübertragung
+                 min_temperatureGap
                  ):
         self.__k_A_k = k_A_k
         self.__CV = CV
         self.__A = number_of_pipes * 3.14159 * (pipe_d/2)**2  # Querschnittsfläche für Strömung
         self.__number_of_BHEs = number_of_BHEs
+        self.__min_flow = min_flow
+        self.__max_flow = max_flow
+        self.__min_exchange = min_exchange
+        self. __min_temperatureGap = min_temperatureGap
     @property
     def k_A_k(self):
         return self.__k_A_k
@@ -77,3 +85,15 @@ class HeatExchangerParameter:
     @property
     def number_of_BHEs(self):
         return self.__number_of_BHEs
+    @property
+    def min_flow(self):
+        return self.__min_flow
+    @property
+    def max_flow(self):
+        return self.__max_flow
+    @property
+    def min_exchange(self):
+        return self.__min_exchange
+    @property
+    def min_temperatureGap(self):
+        return self.__min_temperatureGap

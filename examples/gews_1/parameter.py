@@ -17,6 +17,14 @@ heatExchanger_numberOfPipes = 2  # Anzahl an Rohren in BHE, 2 = 2U
 heatExchanger_numberOfBHEs = 16 # Anzahl an BHEs in Speicherbox
 
 
+heatExchanger_minFlow = 0.0001 # Minimale Fliessrate [m³/s]
+heatExchanger_maxFlow = 0.001 # Maximale Fliessrate [m³/s]
+heatExchanger_minExchange = 3000 # minimale Wärmeübertragung [W]
+heatExchanger_minTemperatureGap = 3 # Minimaler Temperaturunterschied zwischen Wärmetauscher am Zufluss und Speicher (box 0) [K]
+
+
+
+
 # Speicherparameter -> class StorageParameter
 storage_porosity = 0.35  # Porosität des Untergrundes [-]
 storage_latentHeat = 3e5  # Latente Wärme des Phasenüberganges flüssig / fest [J/kg]

@@ -7,10 +7,10 @@ class HeatExchangerValues:
     __T_in = float()
     __T_out = float()
     __Q = float()
-    __Q_flow = float()
+    #__Q_flow = float()
 
     def __init__(self):
-        self.__flag = 1  # aktiv gesetzt (und kein Error)
+        self.__flag = 1  # aktiv gesetzt (1: kein Error)
     @property
     def delta_T(self):
         return self.__delta_T
@@ -23,9 +23,9 @@ class HeatExchangerValues:
     @property
     def Q(self):
         return self.__Q
-    @property
-    def Q_flow(self):
-        return self.__Q_flow
+    #@property
+    #def Q_flow(self):
+    #    return self.__Q_flow
     @property
     def flag(self):
         return self.__flag
@@ -44,9 +44,9 @@ class HeatExchangerValues:
     @flag.setter
     def flag(self, value):
         self.__flag = value
-    @Q_flow.setter
-    def Q_flow(self, value):
-        self.__Q_flow = value
+    #@Q_flow.setter
+    #def Q_flow(self, value):
+    #    self.__Q_flow = value
 class HeatExchanger:
     __control = int()
 
@@ -56,7 +56,7 @@ class HeatExchanger:
                  ):
         self.__parameter = heatExchangerParameter
         self.__values = HeatExchangerValues()
-        self.__flag = 1  # aktiv gesetzt (und kein Error)
+        self.__flag = 0  # 0: kein Error, keine Modifikation
         #self.__conditions = heatExchangerConditions
 
     @property
@@ -92,7 +92,7 @@ class HeatExchanger:
     def calculate_Q(self, T_HE, T_S):
         # Wärmefluss Sondenfluid <-> Untergrund (W)
         return self.__parameter.k_A_k * self.__values.delta_T / np.log((T_HE - T_S) /
-                                                                             (T_HE-self.__values.delta_T - T_S))
+                                                                       (T_HE-self.__values.delta_T - T_S))
 
     #def __f(self, T, T_S):
     #
@@ -106,36 +106,70 @@ class HeatExchanger:
     #    deriv_f = factor * (term_0 + term_1)
     #    return deriv_f
 
-    def calculate(self, T_S):
+    def calculate(self, T_S, output):
         # Newton-Iteration
+
+        if isinstance(self.__control, Control_in):
+            if abs(self.__control.T_in - T_S) < self.__parameter.min_temperatureGap:
+                self.__values.Q = (self.__values.Q * abs(self.__control.T_in - T_S) /
+                                   self.__parameter.min_temperatureGap)
+
+                self.__control.Q = self.__values.Q
+                self.__values.flag = 1
+                if output:
+                    print("Storage full / empty - Q modified to {:.2} W".format(self.__values.Q))
+                #return
+
         T = self.__control.iteration_start_value(T_S)
 
-        #print('Q: ', self.__control.heat_exchange(), ' T_fix: ', self.__control.temperature_fix(), ' T_S: ', T_S, ' T_var: ', T)
         ndx_max = 10  # Anzahl an Maximaliterationen
         for ndx in range(ndx_max):
             _T = T - self.__control.f(T, T_S) / self.__control.deriv_f(T, T_S)
+
             self.__values.T_in, self.__values.T_out, self.__values.delta_T = self.__control.update(_T)
-            self.__values.flag = self.__control.flag
-            #print(self.__values.T_in, self.__values.T_out, self.__values.delta_T, T_S)
-            #print("velocity: ", self.v())
-            #print(ndx, ", T_var: ",  _T)
-            #if abs(self.v()) > 1:
-            #    self.__control.Q(self.__control.heat_exchange() / 2)
-            #    print("Q reduced")
+            self.__values.flag = self.__control.flag  # für Error in log (dann wert 2, sonst 0)
+
+            if abs(self.Q_flow()) < self.__parameter.min_flow:
+                break
             if abs(_T - T) < 0.01:  # Fehlertoleranz
                 break
             if ndx == ndx_max-1:
                 print("WARNUNG - Maximalanzahl an Newton-Iterationen erreicht - Fehler (K): ",  abs(_T - T))
-                self.__values.flag = -1
+                self.__values.flag = 1
 
             T = _T
 
-        #if abs(self.v()) > 5:
-        #    Q, _T = self.__control.reduce_heat_exchange(T_S)
-        #    print("Velocity ", self.v(), " > 5 : Heat exhcange reduded to ", Q)
-        # In Newton iteration zum Anpassen von Speicherraten
-        # self.__values.T_in, self.__values.T_out, self.__values.delta_T = self.__control.update(_T)
+        if isinstance(self.__control, Control_in):
+            if abs(self.Q_flow()) < self.__parameter.min_flow:
+                _T = self.__control.calculate_T_from_Q_flow(self.__parameter.min_flow, T_S, self.__parameter.CV)
+                self.__values.T_in, self.__values.T_out, self.__values.delta_T = self.__control.update(_T)
+                self.__values.Q = self.__parameter.min_flow * self.__parameter.CV * (
+                            self.__values.T_in - self.__values.T_out)
+                if output:
+                    print("Q_flow to small - Q modified to {:.2} W".format(self.__values.Q))
+                self.__values.flag = 2
+
+            if abs(self.Q_flow()) > self.__parameter.max_flow or not self.__control.result_valid(_T):
+                _T = self.__control.calculate_T_from_Q_flow(self.__parameter.max_flow, T_S, self.__parameter.CV)
+                self.__values.T_in, self.__values.T_out, self.__values.delta_T = self.__control.update(_T)
+                self.__values.Q = (self.__parameter.max_flow * self.__parameter.CV *
+                                   (self.__values.T_in - self.__values.T_out))
+                if output:
+                    if abs(self.Q_flow()) > self.__parameter.max_flow:
+                        print("Q_flow to large - Q reduced to {:.2} W".format(self.__values.Q))
+                    if not self.__control.result_valid(_T):
+                        print("Invalid temperature - Q reduced to {:.2} W".format(self.__values.Q))
+                self.__values.flag = 3
+            else:
+                self.__values.T_in, self.__values.T_out, self.__values.delta_T = self.__control.update(_T)
+        else:
+            self.__values.T_in, self.__values.T_out, self.__values.delta_T = self.__control.update(_T)
 
     def v(self):
-        # Fluidgeschwindigkeit is Sonde (postprocessing)
-        return self.__values.Q / self.__parameter.A / self.__parameter.CV / self.__values.delta_T
+        # Fluidgeschwindigkeit in Sonde (postprocessing)
+        return (self.__values.Q / self.__parameter.A / self.__parameter.number_of_BHEs /
+                self.__parameter.CV / self.__values.delta_T)
+
+    def Q_flow(self):
+        # Fliessrate is Sonde (postprocessing)
+        return self.__values.Q / self.__parameter.CV / self.__values.delta_T

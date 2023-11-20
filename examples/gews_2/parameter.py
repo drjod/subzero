@@ -15,7 +15,10 @@ heatExchanger_fluidHeatCapacity = 4.2e6  # Volumetrische Wärmekapazität des So
 heatExchanger_pipeDiameter = .025  # Rohrdurchmesser [m]
 heatExchanger_numberOfPipes = 2  # Anzahl an Rohren in BHE, 2 = 2U
 heatExchanger_numberOfBHEs = 16 # Anzahl an BHEs in Speicherbox
-
+heatExchanger_minFlow = 0.0001 # Minimale Fliessrate [m³/s]
+heatExchanger_maxFlow = 0.001 # Maximale Fliessrate [m³/s]
+heatExchanger_minExchange = 3000 # minimale Wärmeübertragung [W]
+heatExchanger_minTemperatureGap = 3 # Minimaler Temperaturunterschied zwischen Wärmetauscher am Zufluss und Speicher (box 0) [K]
 
 # Speicherparameter -> class StorageParameter
 storage_porosity = 0.35  # Porosität des Untergrundes [-]
@@ -38,8 +41,8 @@ storage_solid_conductivity = 4.2  # Wärmeleitfähigkeit [W/m/K]
 
 
 # Zeitschritte -> class Time
-time_delta_t = 15768  # Zeitschrittweite [s]
-time_numberOfSteps = 100  # Anzahl an Zeitschritten
+time_delta_t = 8640  # 15768  # Zeitschrittweite [s]
+time_numberOfSteps = 300  # Anzahl an Zeitschritten
 
 # Quellterm für Speicher (Box 0) -> class SourceTerm, Stufenfunktion (psoitiv, negativ im Wechsel)
 sourceTerm_cycleDuration = 31536000  # Zyklusdauer [s]

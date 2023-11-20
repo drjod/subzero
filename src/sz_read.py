@@ -23,7 +23,7 @@ def read_data(path):
         if storage_control.input_file.endswith("xlsx"):
             #import xlrd
             frame = pd.read_excel(path + "/" + storage_control.input_file)
-            #print(frame)
+            # print(frame.head())
 
             time_unitfactor = {"s": 1, "h": 3600, "d": 86400, "y": 86400 * 3600}
             heat_exchange_unitfactor = {"W": 1, "kW": 1e3, "MW": 1e6}
@@ -59,7 +59,10 @@ def read_data(path):
                 time_series[ndx][1] = storage_control.storage_control
                 time_series[ndx][2] = (frame[headervariables[1]][ndx] * storage_control.heat_exchange_factor *
                                        heat_exchange_unitfactor[storage_control.heat_exchange_unit])
-                time_series[ndx][3] = storage_control.temperature_condition
+                if frame.shape[1] == 3:  # temperature condition given in input_file
+                    time_series[ndx][3] = frame[headervariables[2]][ndx]
+                else:  # temperature condition given in parameter.py
+                    time_series[ndx][3] = storage_control.temperature_condition
 
             print("read file ", storage_control.input_file, " - ", frame["Zeit"].size, " lines")
     except:
@@ -101,7 +104,11 @@ def read_data(path):
         parameter.heatExchanger_fluidHeatCapacity,  # Volumetr. Wärmekapazität
         parameter.heatExchanger_pipeDiameter,  # Rohrdurchmesser
         parameter.heatExchanger_numberOfPipes,  # Anzahl an Rohre in BHE, 2=2U
-        parameter.heatExchanger_numberOfBHEs  # Anzahl an BHEs in Speicherbox
+        parameter.heatExchanger_numberOfBHEs,  # Anzahl an BHEs in Speicherbox
+        parameter.heatExchanger_minFlow,  # Minimale Fliessrate
+        parameter.heatExchanger_maxFlow,  # Maximale Fliessrate
+        parameter.heatExchanger_minExchange,  # minimale Wärmeübertragung
+        parameter.heatExchanger_minTemperatureGap,  # Minimaler Tmperaturunterschied Wärmetauscher am Einlass / Speicher
     )
 
     heatExchanger = HeatExchanger(heatExchangerParameter)

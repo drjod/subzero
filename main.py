@@ -1,16 +1,23 @@
 import pandas as pd
-import sys, importlib
+import sys
+import importlib
+import time
 
 if "src" not in sys.path:
     sys.path.append("src")
 
 from subzero import SubZero
 
-path = "examples/gews_LK_excel"
+path = "examples/gews_2"
 
+time0 = time.perf_counter()
 subzero = SubZero(path)
+time1 = time.perf_counter()
 subzero.calculate()
+time2 = time.perf_counter()
 
+print("Setup time (s): {}".format(time1-time0))
+print("Simulation time (s): {}".format(time2-time1))
 
 ########################
 # PLOTTING
@@ -21,13 +28,15 @@ if True:
              "eisfraktion", "raten", "fluidgeschwindigkeit", "flag"]
     plots_shown = {
         "temperatur_speicher": 1,
-        "temperatur_aussen": 1,
+        "temperatur_aussen": 0,
         "waernme": 0,
         "eisfraktion": 0,
-        "raten": 0,
-        "fluidgeschwindigkeit": 0,
-        "flag": 0
+        "raten": 1,
+        "fluidgeschwindigkeit": 1,
+        "flag": 1
     }
+
+    datum = False
 
     anzahl_plots = 0
     for key in plots:
@@ -46,23 +55,23 @@ if True:
 
     time_array = subzero.time_array_shifted_to_loadcurve
 
-    #############################
+    if datum:
+        date_start = dt.datetime(1900,  # year
+                                 1,  # month
+                                 1,  # day
+                                 0,  # hour
+                                 0,  # min
+                                 0  # sec
+                                 )
 
-    date_start = dt.datetime(1900,  # year
-                             1,  # month
-                             1,  # day
-                             0,  # hour
-                             0,  # min
-                             0  # sec
-                             )
+        x = [date_start + dt.timedelta(seconds=int(time)) for time in time_array]  # x-achse
+        # loc_major = WeekdayLocator(byweekday=(MO)) # für major Grid, ausgewhälter Wochentag
+        # loc_minor = AutoMinorLocator(7) # für minot Grid, einzelne Tage
+        date_format = mdates.DateFormatter('%d.%m.')
+        labelrotation = 90  # grad, für x-label (Datum)
 
-    x = [date_start + dt.timedelta(seconds=int(time)) for time in time_array]  # x-achse
-    # loc_major = WeekdayLocator(byweekday=(MO)) # für major Grid, ausgewhälter Wochentag
-    # loc_minor = AutoMinorLocator(7) # für minot Grid, einzelne Tage
-    date_format = mdates.DateFormatter('%d.%m.')
-    labelrotation = 90  # grad, für x-label (Datum)
-
-    ################################
+    else:
+        x = subzero.time_array_shifted_to_loadcurve / 86400 / 365
 
     fig, axes = plt.subplots(anzahl_plots, 1, figsize=(25, 20))
     plt.subplots_adjust(wspace=.3, hspace=.5)
@@ -81,16 +90,18 @@ if True:
 
             frame = pd.read_excel(path + "/" + storage_control.input_file)
             ax.plot(x[1::12], frame.T_Storage, label='T_Storage', color='black', linestyle='--')
-
         except:
             pass
-        ax.set_ylabel("T [°C]")
 
-        ax.xaxis.set_major_formatter(date_format)
-        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-        ax.tick_params(axis='x', labelrotation=labelrotation)
+        ax.set_ylabel("T [°C]")
+        #ax.set_ylim([-.1, .1])
+
+        if datum:
+            ax.xaxis.set_major_formatter(date_format)
+            ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+            ax.tick_params(axis='x', labelrotation=labelrotation)
+            ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.minorticks_on()
-        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
         ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
         # ax.set_xticklabels([])
@@ -107,14 +118,16 @@ if True:
         ax.plot(x, subzero.T[:, 8], label='Box 8 - weit seitlich', color='green', linestyle='--')
 
         ax.set_ylabel("T [°C]")
-        ax.xaxis.set_major_formatter(date_format)
-        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-        ax.tick_params(axis='x', labelrotation=labelrotation)
+        if datum:
+            ax.xaxis.set_major_formatter(date_format)
+            ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+            ax.tick_params(axis='x', labelrotation=labelrotation)
+            ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.minorticks_on()
-        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
         ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
 
+        # ergänze ergebnisse aus excelfile
         try:
             if path not in sys.path:
                 sys.path.append(path)
@@ -141,11 +154,12 @@ if True:
         ax.plot(x, subzero.H[:, 8] / storage_factor, label='Box 8', color='green', linestyle='--')
 
         ax.set_ylabel("[MWh]")
-        ax.xaxis.set_major_formatter(date_format)
-        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-        ax.tick_params(axis='x', labelrotation=labelrotation)
+        if datum:
+            ax.xaxis.set_major_formatter(date_format)
+            ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+            ax.tick_params(axis='x', labelrotation=labelrotation)
+            ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.minorticks_on()
-        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
         ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
 
@@ -160,11 +174,12 @@ if True:
 
         ax.set_ylabel("[-]")
         ax.set_ylim([-0.1, 1.1])
-        ax.xaxis.set_major_formatter(date_format)
-        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-        ax.tick_params(axis='x', labelrotation=labelrotation)
+        if datum:
+            ax.xaxis.set_major_formatter(date_format)
+            ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+            ax.tick_params(axis='x', labelrotation=labelrotation)
+            ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.minorticks_on()
-        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
         ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
         ndx += 1
@@ -177,7 +192,9 @@ if True:
         ax = axes[ndx]
         ax.set_title("Speicherraten")
         ax.plot(x, subzero.Q_ext / storage_factor,
-                label='Be- und Entlandung', color='orange')
+                label='Angeforderte Be- und Entlandung', color='orange')
+        ax.plot(x, subzero.Q / storage_factor,
+                label='Tatsächliche Be- und Entlandung', color='red')
         ax.plot(x,
                 -subzero.latent_heat_capacity * V_box0 *
                 (subzero.T[:, 0] - np.roll(subzero.T[:, 0], 1)) / 3600 / storage_factor,
@@ -185,11 +202,12 @@ if True:
 
         #ax.set_ylim([-.1, .1])
         ax.set_ylabel("[KW]")
-        ax.xaxis.set_major_formatter(date_format)
-        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-        ax.tick_params(axis='x', labelrotation=labelrotation)
+        if datum:
+            ax.xaxis.set_major_formatter(date_format)
+            ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+            ax.tick_params(axis='x', labelrotation=labelrotation)
+            ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.minorticks_on()
-        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
         ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
         ax.legend()  # loc='lower right')
@@ -199,16 +217,18 @@ if True:
 
     if plots_shown["fluidgeschwindigkeit"]:
         ax = axes[ndx]
-        ax.set_title("Fluidgeschwindigkeit in Wärmetauscher")
-        ax.plot(x[1:], subzero.v[1:], label='v', color='orange')
-        #ax.set_ylim([-2, 0])
+        ax.set_title("Fliessrate in Wärmetauscher")
+        #ax.plot(x[1:], subzero.v[1:], label='v', color='orange')
+        ax.plot(x[1:], subzero.Q_flow[1:], label='v', color='orange')
+        #ax.set_ylim([-5, 0])
 
         ax.set_ylabel("[m/s]")
-        ax.xaxis.set_major_formatter(date_format)
-        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-        ax.tick_params(axis='x', labelrotation=labelrotation)
+        if datum:
+            ax.xaxis.set_major_formatter(date_format)
+            ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+            ax.tick_params(axis='x', labelrotation=labelrotation)
+            ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.minorticks_on()
-        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
         ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
         # ax.legend()#loc='lower right')
@@ -218,15 +238,16 @@ if True:
 
     if plots_shown["flag"]:
         ax = axes[ndx]
-        ax.set_title("Flag für Wärmetauscher (0: inaktiv, 1: aktiv, negativ: Error)")
+        ax.set_title("Flag für Wärmetauscher")
         ax.plot(x[1:], subzero.heat_exchanger_flag[1:], label='flag', color='orange')
 
         ax.set_ylabel("[-]")
-        ax.xaxis.set_major_formatter(date_format)
-        ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
-        ax.tick_params(axis='x', labelrotation=labelrotation)
+        if datum:
+            ax.xaxis.set_major_formatter(date_format)
+            ax.xaxis.set_major_locator(WeekdayLocator(byweekday=(MO)))  # mdates.DayLocator(interval=1))
+            ax.tick_params(axis='x', labelrotation=labelrotation)
+            ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.minorticks_on()
-        ax.xaxis.set_minor_locator(AutoMinorLocator(7))
         ax.grid(visible=True, which='major', linestyle='-', linewidth=1.)
         ax.grid(visible=True, which='minor', linestyle='--', linewidth=.5)
         # ax.legend()#loc='lower right')
